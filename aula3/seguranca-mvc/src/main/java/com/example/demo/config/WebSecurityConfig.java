@@ -1,24 +1,28 @@
-package com.example.security.config;
+package com.example.demo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
-import org.springframework.security.web.SecurityFilterChain;
 
 import javax.sql.DataSource;
 
+import static org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType.H2;
+
 @Configuration
 @EnableWebSecurity
-public class WebSecurityConfig  {
+public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+
     private final DataSource dataSource;
 
     public WebSecurityConfig(DataSource dataSource) {
@@ -26,19 +30,28 @@ public class WebSecurityConfig  {
     }
 
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Override
+    protected void configure(HttpSecurity http) throws Exception{
         http
-                .authorizeHttpRequests((authz) -> authz
-                        .requestMatchers("/hello").permitAll()
-                        .anyRequest().authenticated()
-                )
+                .authorizeRequests()
+                .antMatchers("/hello").permitAll()
+                .anyRequest().authenticated()
+                .and()
                 .formLogin(form -> form
                         .loginPage("/login")
+                        .defaultSuccessUrl("/produto", true)
                         .permitAll()
                 )
                 .logout(logout -> logout.logoutUrl("/logout"));
-        return http.build();
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth)
+            throws Exception{
+        auth.jdbcAuthentication()
+                .dataSource(dataSource)
+                .passwordEncoder(passwordEncoder());
+        users(dataSource);
     }
 
     @Bean
@@ -55,19 +68,9 @@ public class WebSecurityConfig  {
                         .roles("Admin")
                         .build();
 
-        JdbcUserDetailsManager manager = new JdbcUserDetailsManager(dataSource);
-        manager.createUser(user);
+        JdbcUserDetailsManager users = new JdbcUserDetailsManager(dataSource);
+        users.createUser(user);
 //        InMemoryUserDetailsManager manager = new InMemoryUserDetailsManager(user);
-        return manager;
-    }
-
-    @Bean
-    @Primary
-    public AuthenticationManagerBuilder authenticationManager(AuthenticationManagerBuilder auth) throws Exception {
-        auth.jdbcAuthentication()
-                .dataSource(dataSource)
-                .passwordEncoder(passwordEncoder());
-        users(dataSource);
-        return auth;
+        return users;
     }
 }

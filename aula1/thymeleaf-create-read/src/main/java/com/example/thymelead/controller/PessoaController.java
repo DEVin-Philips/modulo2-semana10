@@ -56,6 +56,8 @@ public class PessoaController {
                 pessoaEntity -> new PessoaDto(pessoaEntity.getNome(), pessoaEntity.getIdade())
         ).collect(Collectors.toList()); //define o tipo da lista que vamos salvar
 
+        PessoaDto pessoaDto = new PessoaDto();
+        pessoaDto.setNome();
         model.addAttribute("pessoaDtos", pessoaDtos);
         return "lista_pessoas";
     }
